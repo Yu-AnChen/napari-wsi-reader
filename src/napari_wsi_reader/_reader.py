@@ -5,15 +5,34 @@ It implements the Reader specification, but your plugin may choose to
 implement multiple readers or even other plugin contributions. see:
 https://napari.org/stable/plugins/guides.html?#readers
 """
+from typing import Callable, List, Optional, Sequence, Union
+import pathlib
+
 import numpy as np
+import palom.reader
+from napari.types import LayerData
+
+PathLike = str | pathlib.Path
+PathOrPaths = Union[PathLike, Sequence[PathLike]]
+ReaderFunction = Callable[[PathOrPaths], List[LayerData]]
 
 
-def napari_get_reader(path):
+def _is_ome_tiff(path):
+    path = pathlib.Path(path)
+    return ''.join(path.suffixes[-2:]) in ['.ome.tiff', '.ome.tif']
+
+
+def _is_ashlar_lt_zarr(path):
+    path = pathlib.Path(path)
+    return path.is_dir() & path.name.endswith('-ashlar-lt.zarr')
+
+
+def napari_get_reader(path: PathOrPaths) -> Optional[ReaderFunction]:
     """A basic implementation of a Reader contribution.
 
     Parameters
     ----------
-    path : str or list of str
+    path : str | pathlib.Path or list of (str | pathlib.Path)
         Path to file, or list of paths.
 
     Returns
@@ -23,17 +42,46 @@ def napari_get_reader(path):
         same path or list of paths, and returns a list of layer data tuples.
     """
     if isinstance(path, list):
-        # reader plugins may be handed single path, or a list of paths.
-        # if it is a list, it is assumed to be an image stack...
-        # so we are only going to look at the first file.
-        path = path[0]
+        for pp in path:
+            pp = pathlib.Path(pp)
+            if not (_is_ome_tiff(pp) | _is_ashlar_lt_zarr(pp)):
+                return None
 
     # if we know we cannot read the file, we immediately return None.
-    if not path.endswith(".npy"):
-        return None
+    else:
+        if not (_is_ome_tiff(path) | _is_ashlar_lt_zarr(path)):
+            return None
 
     # otherwise we return the *function* that can read ``path``.
-    return reader_function
+    return palom_ome_pyramid_reader
+
+
+def palom_ome_pyramid_reader(path):
+    import dask.array as da
+    import zarr
+
+    if not isinstance(path, list):
+        path = [path]
+    
+    readers = []
+    pyramids = []
+    for pp in path:
+        if _is_ome_tiff(pp):
+            reader = palom.reader.OmePyramidReader(pp)
+            readers.append(reader)
+            pyramids.append(reader.pyramid)
+        elif _is_ashlar_lt_zarr(pp):
+            store = zarr.open(pp, mode='r')
+            pyramid = [
+                da.array([da.from_zarr(aa) for aa in group.values()])
+                for _, group in store.groups()
+            ]
+            pyramid[1] = pyramid[1].persist()
+            pyramid[2] = pyramid[2].persist()
+            readers.append(store)
+            pyramids.append(pyramid)
+
+    return [(pp, dict(visible=False, channel_axis=0)) for pp in pyramids]
 
 
 def reader_function(path):
