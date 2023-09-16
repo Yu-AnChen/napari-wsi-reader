@@ -20,13 +20,13 @@ contributions:
     - id: napari-wsi-reader.make_magic_widget
       python_name: napari_wsi_reader._widget:example_magic_widget
       title: Make example magic widget
-    - id: napari-wsi-reader.make_func_widget
-      python_name: napari_wsi_reader._widget:example_function_widget
-      title: Make example function widget
+    - id: napari-wsi-reader.make_tform_widget
+      python_name: napari_wsi_reader._widget:manual_transform
+      title: Transform layers
   readers:
     - command: napari-wsi-reader.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']
+      accepts_directories: true
+      filename_patterns: ['*.ome.tif', '*.ome.tiff', '*-ashlar-lt.zarr']
   writers:
     - command: napari-wsi-reader.write_multiple
       layer_types: ['image*','labels*']
@@ -39,10 +39,5 @@ contributions:
       display_name: WSI Reader
       key: unique_id.1
   widgets:
-    - command: napari-wsi-reader.make_qwidget
-      display_name: Example QWidget
-    - command: napari-wsi-reader.make_magic_widget
-      display_name: Example Magic Widget
-    - command: napari-wsi-reader.make_func_widget
-      autogenerate: true
-      display_name: Example Function Widget
+    - command: napari-wsi-reader.make_tform_widget
+      display_name: Manual Transform Widget

@@ -8,7 +8,7 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from magicgui import magic_factory
+from magicgui import magic_factory, magicgui
 from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
 if TYPE_CHECKING:
@@ -32,15 +32,35 @@ class ExampleQWidget(QWidget):
 
     def _on_click(self):
         print("napari has", len(self.viewer.layers), "layers")
+        print(self.viewer.layers.selection)
 
 
 @magic_factory
 def example_magic_widget(img_layer: "napari.layers.Image"):
     print(f"you have selected {img_layer}")
+    print(f"you have selected {img_layer.name}")
 
 
-# Uses the `autogenerate: true` flag in the plugin manifest
-# to indicate it should be wrapped as a magicgui to autogenerate
-# a widget.
-def example_function_widget(img_layer: "napari.layers.Image"):
-    print(f"you have selected {img_layer}")
+from napari import Viewer
+@magic_factory(
+    # call_button='Reset',
+        x={
+        "min": -1000,
+        "max": 1000,
+        "step": 1,
+        "widget_type": "Slider",
+    },
+    y={
+        "min": -1000,
+        "max": 1000,
+        "step": 1,
+        "widget_type": "Slider",
+    },
+    auto_call=True,
+)
+def manual_transform(
+    viewer: Viewer, x=0, y=0
+):
+    if viewer.layers.selection:
+        for layer in viewer.layers.selection:
+            layer.translate = (y, x)
