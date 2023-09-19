@@ -22,11 +22,6 @@ def _is_ome_tiff(path):
     return ''.join(path.suffixes[-2:]) in ['.ome.tiff', '.ome.tif']
 
 
-def _is_ashlar_lt_zarr(path):
-    path = pathlib.Path(path)
-    return path.is_dir() & path.name.endswith('-ashlar-lt.zarr')
-
-
 def napari_get_reader(path: PathOrPaths) -> Optional[ReaderFunction]:
     """A basic implementation of a Reader contribution.
 
@@ -44,12 +39,12 @@ def napari_get_reader(path: PathOrPaths) -> Optional[ReaderFunction]:
     if isinstance(path, list):
         for pp in path:
             pp = pathlib.Path(pp)
-            if not (_is_ome_tiff(pp) | _is_ashlar_lt_zarr(pp)):
+            if not _is_ome_tiff(pp):
                 return None
 
     # if we know we cannot read the file, we immediately return None.
     else:
-        if not (_is_ome_tiff(path) | _is_ashlar_lt_zarr(path)):
+        if not _is_ome_tiff(path):
             return None
 
     # otherwise we return the *function* that can read ``path``.
@@ -57,8 +52,6 @@ def napari_get_reader(path: PathOrPaths) -> Optional[ReaderFunction]:
 
 
 def palom_ome_pyramid_reader(path):
-    import dask.array as da
-    import zarr
 
     if not isinstance(path, list):
         path = [path]
@@ -66,20 +59,9 @@ def palom_ome_pyramid_reader(path):
     readers = []
     pyramids = []
     for pp in path:
-        if _is_ome_tiff(pp):
-            reader = palom.reader.OmePyramidReader(pp)
-            readers.append(reader)
-            pyramids.append(reader.pyramid)
-        elif _is_ashlar_lt_zarr(pp):
-            store = zarr.open(pp, mode='r')
-            pyramid = [
-                da.array([da.from_zarr(aa) for aa in group.values()])
-                for _, group in store.groups()
-            ]
-            pyramid[1] = pyramid[1].persist()
-            pyramid[2] = pyramid[2].persist()
-            readers.append(store)
-            pyramids.append(pyramid)
+        reader = palom.reader.OmePyramidReader(pp)
+        readers.append(reader)
+        pyramids.append(reader.pyramid)
 
     return [(pp, dict(visible=False, channel_axis=0)) for pp in pyramids]
 
