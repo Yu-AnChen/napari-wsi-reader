@@ -26,7 +26,7 @@ contributions:
   readers:
     - command: napari-wsi-reader.get_reader
       accepts_directories: true
-      filename_patterns: ['*.ome.tif', '*.ome.tiff', '*-ashlar-lt.zarr']
+      filename_patterns: ['*.ome.tif', '*.ome.tiff']
   writers:
     - command: napari-wsi-reader.write_multiple
       layer_types: ['image*','labels*']
